@@ -1,0 +1,3 @@
+D:\Rat\AsyncRAT-C#\Plugin\Extra\Extra\obj\Release\Extra.csproj.AssemblyReference.cache
+D:\Rat\AsyncRAT-C#\Plugin\Extra\Extra\obj\Release\Extra.csproj.CoreCompileInputs.cache
+D:\Rat\AsyncRAT-C#\Plugin\Extra\Extra\obj\Release\Extra.dll

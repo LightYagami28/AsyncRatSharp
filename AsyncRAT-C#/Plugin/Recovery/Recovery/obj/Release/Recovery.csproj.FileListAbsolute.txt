@@ -1,0 +1,6 @@
+D:\Rat\AsyncRAT-C#\Binaries\Release\Plugins\Recovery.dll
+D:\Rat\AsyncRAT-C#\Plugin\Recovery\Recovery\obj\Release\Recovery.csproj.AssemblyReference.cache
+D:\Rat\AsyncRAT-C#\Plugin\Recovery\Recovery\obj\Release\Recovery.csproj.CoreCompileInputs.cache
+D:\Rat\AsyncRAT-C#\Plugin\Recovery\Recovery\obj\Release\Recovery.csproj.Fody.CopyLocal.cache
+D:\Rat\AsyncRAT-C#\Plugin\Recovery\Recovery\obj\Release\Recovery.csproj.Up2Date
+D:\Rat\AsyncRAT-C#\Plugin\Recovery\Recovery\obj\Release\Recovery.dll

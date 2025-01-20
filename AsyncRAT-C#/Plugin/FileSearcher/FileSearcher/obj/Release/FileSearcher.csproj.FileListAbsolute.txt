@@ -1,0 +1,6 @@
+D:\Rat\AsyncRAT-C#\Binaries\Release\Plugins\FileSearcher.dll
+D:\Rat\AsyncRAT-C#\Plugin\FileSearcher\FileSearcher\obj\Release\FileSearcher.csproj.AssemblyReference.cache
+D:\Rat\AsyncRAT-C#\Plugin\FileSearcher\FileSearcher\obj\Release\FileSearcher.csproj.CoreCompileInputs.cache
+D:\Rat\AsyncRAT-C#\Plugin\FileSearcher\FileSearcher\obj\Release\FileSearcher.csproj.Fody.CopyLocal.cache
+D:\Rat\AsyncRAT-C#\Plugin\FileSearcher\FileSearcher\obj\Release\FileSear.E20A3A61.Up2Date
+D:\Rat\AsyncRAT-C#\Plugin\FileSearcher\FileSearcher\obj\Release\FileSearcher.dll

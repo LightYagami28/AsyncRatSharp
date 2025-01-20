@@ -1,0 +1,9 @@
+D:\Rat\AsyncRAT-C#\MessagePack\bin\Debug\MessagePackLib.dll
+D:\Rat\AsyncRAT-C#\MessagePack\bin\Debug\MessagePackLib.pdb
+D:\Rat\AsyncRAT-C#\MessagePack\bin\Debug\BouncyCastle.Cryptography.dll
+D:\Rat\AsyncRAT-C#\MessagePack\bin\Debug\BouncyCastle.Cryptography.xml
+D:\Rat\AsyncRAT-C#\MessagePack\obj\Debug\MessagePackLib.csproj.AssemblyReference.cache
+D:\Rat\AsyncRAT-C#\MessagePack\obj\Debug\MessagePackLib.csproj.CoreCompileInputs.cache
+D:\Rat\AsyncRAT-C#\MessagePack\obj\Debug\MessageP.DD2E48C9.Up2Date
+D:\Rat\AsyncRAT-C#\MessagePack\obj\Debug\MessagePackLib.dll
+D:\Rat\AsyncRAT-C#\MessagePack\obj\Debug\MessagePackLib.pdb

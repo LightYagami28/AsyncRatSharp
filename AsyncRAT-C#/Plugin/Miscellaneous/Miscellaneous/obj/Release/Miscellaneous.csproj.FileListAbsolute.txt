@@ -1,0 +1,5 @@
+D:\Rat\AsyncRAT-C#\Plugin\Miscellaneous\Miscellaneous\obj\Release\Miscellaneous.csproj.AssemblyReference.cache
+D:\Rat\AsyncRAT-C#\Plugin\Miscellaneous\Miscellaneous\obj\Release\Miscellaneous.Properties.Resources.resources
+D:\Rat\AsyncRAT-C#\Plugin\Miscellaneous\Miscellaneous\obj\Release\Miscellaneous.csproj.GenerateResource.cache
+D:\Rat\AsyncRAT-C#\Plugin\Miscellaneous\Miscellaneous\obj\Release\Miscellaneous.csproj.CoreCompileInputs.cache
+D:\Rat\AsyncRAT-C#\Plugin\Miscellaneous\Miscellaneous\obj\Release\Miscellaneous.dll

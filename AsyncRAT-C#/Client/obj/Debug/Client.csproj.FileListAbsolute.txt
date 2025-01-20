@@ -1,0 +1,5 @@
+D:\Rat\AsyncRAT-C#\Binaries\Debug\Stub\Stub.exe.config
+D:\Rat\AsyncRAT-C#\Client\obj\Debug\Client.csproj.AssemblyReference.cache
+D:\Rat\AsyncRAT-C#\Client\obj\Debug\Client.csproj.CoreCompileInputs.cache
+D:\Rat\AsyncRAT-C#\Client\obj\Debug\Stub.exe
+D:\Rat\AsyncRAT-C#\Client\obj\Debug\Stub.pdb

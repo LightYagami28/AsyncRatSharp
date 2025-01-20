@@ -1,0 +1,3 @@
+D:\Rat\AsyncRAT-C#\Plugin\SendFile\SendFile\obj\Release\SendFile.csproj.AssemblyReference.cache
+D:\Rat\AsyncRAT-C#\Plugin\SendFile\SendFile\obj\Release\SendFile.csproj.CoreCompileInputs.cache
+D:\Rat\AsyncRAT-C#\Plugin\SendFile\SendFile\obj\Release\SendFile.dll

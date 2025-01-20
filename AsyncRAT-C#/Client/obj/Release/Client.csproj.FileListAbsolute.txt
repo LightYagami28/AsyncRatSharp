@@ -1,0 +1,4 @@
+D:\Rat\AsyncRAT-C#\Binaries\Release\Stub\Stub.exe.config
+D:\Rat\AsyncRAT-C#\Client\obj\Release\Client.csproj.AssemblyReference.cache
+D:\Rat\AsyncRAT-C#\Client\obj\Release\Client.csproj.CoreCompileInputs.cache
+D:\Rat\AsyncRAT-C#\Client\obj\Release\Stub.exe

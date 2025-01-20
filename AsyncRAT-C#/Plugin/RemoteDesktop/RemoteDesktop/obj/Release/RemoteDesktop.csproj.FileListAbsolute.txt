@@ -1,0 +1,3 @@
+D:\Rat\AsyncRAT-C#\Plugin\RemoteDesktop\RemoteDesktop\obj\Release\RemoteDesktop.csproj.AssemblyReference.cache
+D:\Rat\AsyncRAT-C#\Plugin\RemoteDesktop\RemoteDesktop\obj\Release\RemoteDesktop.csproj.CoreCompileInputs.cache
+D:\Rat\AsyncRAT-C#\Plugin\RemoteDesktop\RemoteDesktop\obj\Release\RemoteDesktop.dll

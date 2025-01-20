@@ -1,0 +1,5 @@
+D:\Rat\AsyncRAT-C#\Plugin\Chat\Chat\obj\Release\Chat.csproj.AssemblyReference.cache
+D:\Rat\AsyncRAT-C#\Plugin\Chat\Chat\obj\Release\Plugin.FormChat.resources
+D:\Rat\AsyncRAT-C#\Plugin\Chat\Chat\obj\Release\Chat.csproj.GenerateResource.cache
+D:\Rat\AsyncRAT-C#\Plugin\Chat\Chat\obj\Release\Chat.csproj.CoreCompileInputs.cache
+D:\Rat\AsyncRAT-C#\Plugin\Chat\Chat\obj\Release\Chat.dll
