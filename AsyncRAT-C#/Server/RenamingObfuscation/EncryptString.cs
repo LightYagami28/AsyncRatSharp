@@ -3,10 +3,7 @@ using Server.RenamingObfuscation.Interfaces;
 using dnlib.DotNet;
 using dnlib.DotNet.Emit;
 using System;
-using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Server.RenamingObfuscation
 {
@@ -14,21 +11,20 @@ namespace Server.RenamingObfuscation
     {
         private static MethodDef InjectMethod(ModuleDef module, string methodName)
         {
+            // Load the DecryptionHelper class from the module and resolve its method
             ModuleDefMD typeModule = ModuleDefMD.Load(typeof(DecryptionHelper).Module);
             TypeDef typeDef = typeModule.ResolveTypeDef(MDToken.ToRID(typeof(DecryptionHelper).MetadataToken));
-            IEnumerable<IDnlibDef> members = InjectHelper.Inject(typeDef, module.GlobalType, module);
-            MethodDef injectedMethodDef = (MethodDef)members.Single(method => method.Name == methodName);
+            var injectedMethods = InjectHelper.Inject(typeDef, module.GlobalType, module);
+            var injectedMethodDef = injectedMethods.SingleOrDefault(method => method.Name == methodName);
 
-            foreach (MethodDef md in module.GlobalType.Methods)
+            // Removing default constructor if it exists in the global type
+            var ctorMethod = module.GlobalType.Methods.SingleOrDefault(md => md.Name == ".ctor");
+            if (ctorMethod != null)
             {
-                if (md.Name == ".ctor")
-                {
-                    module.GlobalType.Remove(md);
-                    break;
-                }
+                module.GlobalType.Remove(ctorMethod);
             }
 
-            return injectedMethodDef;
+            return injectedMethodDef as MethodDef;
         }
 
         public static void DoEncrypt(ModuleDef inPath)
@@ -38,33 +34,35 @@ namespace Server.RenamingObfuscation
 
         private static ModuleDef EncryptStrings(ModuleDef inModule)
         {
-            ModuleDef module = inModule;
+            var module = inModule;
+            ICrypto crypto = new Base64();  // Assuming Base64 is a valid ICrypto implementation
 
-            ICrypto crypto = new Base64();
-
+            // Inject Decrypt method into the module
             MethodDef decryptMethod = InjectMethod(module, "Decrypt_Base64");
 
-            foreach (TypeDef type in module.Types)
+            // Iterate over all types and methods in the module for encryption
+            foreach (var type in module.Types)
             {
+                // Skip global module types, Resources, and Settings classes
                 if (type.IsGlobalModuleType || type.Name == "Resources" || type.Name == "Settings")
                     continue;
 
-                foreach (MethodDef method in type.Methods)
+                foreach (var method in type.Methods)
                 {
-                    if (!method.HasBody)
-                        continue;
-                    if (method == decryptMethod)
+                    if (!method.HasBody || method == decryptMethod)
                         continue;
 
                     method.Body.KeepOldMaxStack = true;
 
+                    // Loop through method body instructions and replace strings with encrypted versions
                     for (int i = 0; i < method.Body.Instructions.Count; i++)
                     {
-                        if (method.Body.Instructions[i].OpCode == OpCodes.Ldstr)	// String
+                        if (method.Body.Instructions[i].OpCode == OpCodes.Ldstr)  // Identifying string literals
                         {
-                            string oldString = method.Body.Instructions[i].Operand.ToString();	//Original String
+                            string originalString = method.Body.Instructions[i].Operand.ToString();  // Original String
 
-                            method.Body.Instructions[i].Operand = crypto.Encrypt(oldString);
+                            // Encrypt the string and insert decryption call
+                            method.Body.Instructions[i].Operand = crypto.Encrypt(originalString);
                             method.Body.Instructions.Insert(i + 1, new Instruction(OpCodes.Call, decryptMethod));
                         }
                     }

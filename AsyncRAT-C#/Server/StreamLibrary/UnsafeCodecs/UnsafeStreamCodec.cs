@@ -16,15 +16,9 @@ namespace StreamLibrary.UnsafeCodecs
             internal set;
         }
 
-        public override int BufferCount
-        {
-            get { return 1; }
-        }
+        public override int BufferCount => 1;
 
-        public override CodecOption CodecOptions
-        {
-            get { return CodecOption.RequireSameSize; }
-        }
+        public override CodecOption CodecOptions => CodecOption.RequireSameSize;
 
         public Size CheckBlock { get; private set; }
         private byte[] EncodeBuffer;
@@ -35,7 +29,7 @@ namespace StreamLibrary.UnsafeCodecs
         public override event IVideoCodec.VideoDebugScanningDelegate onCodeDebugScan;
         public override event IVideoCodec.VideoDebugScanningDelegate onDecodeDebugScan;
 
-        bool UseJPEG;
+        private bool UseJPEG;
 
         /// <summary>
         /// Initialize a new object of UnsafeStreamCodec
@@ -123,7 +117,7 @@ namespace StreamLibrary.UnsafeCodecs
                 s = new Size(ScanArea.Width, s.Height);
                 fixed (byte* encBuffer = EncodeBuffer)
                 {
-                    for (int y = ScanArea.Y; y != ScanArea.Height; )
+                    for (int y = ScanArea.Y; y != ScanArea.Height;)
                     {
                         if (y == lasty)
                             s = new Size(ScanArea.Width, lastSize.Height);
@@ -164,7 +158,7 @@ namespace StreamLibrary.UnsafeCodecs
 
                             for (int j = 0; j < cBlock.Height; j++)
                             {
-                                int blockOffset = (Stride * (cBlock.Y+j)) + (PixelSize * cBlock.X);
+                                int blockOffset = (Stride * (cBlock.Y + j)) + (PixelSize * cBlock.X);
                                 if (NativeMethods.memcmp(encBuffer + blockOffset, pScan0 + blockOffset, (uint)blockStride) != 0)
                                     FoundChanges = true;
                                 NativeMethods.memcpy(encBuffer + blockOffset, pScan0 + blockOffset, (uint)blockStride); //copy-changes
@@ -193,19 +187,6 @@ namespace StreamLibrary.UnsafeCodecs
                     }
                 }
 
-                /*int maxHeight = 0;
-                int maxWidth = 0;
-
-                for (int i = 0; i < finalUpdates.Count; i++)
-                {
-                    if (finalUpdates[i].Height > maxHeight)
-                        maxHeight = finalUpdates[i].Height;
-                    maxWidth += finalUpdates[i].Width;
-                }
-
-                Bitmap bmp = new Bitmap(maxWidth+1, maxHeight+1);
-                int XOffset = 0;*/
-
                 for (int i = 0; i < finalUpdates.Count; i++)
                 {
                     Rectangle rect = finalUpdates[i];
@@ -220,12 +201,6 @@ namespace StreamLibrary.UnsafeCodecs
                         offset += blockStride;
                     }
                     TmpBmp.UnlockBits(TmpData);
-
-                    /*using (Graphics g = Graphics.FromImage(bmp))
-                    {
-                        g.DrawImage(TmpBmp, new Point(XOffset, 0));
-                    }
-                    XOffset += TmpBmp.Width;*/
 
                     outStream.Write(BitConverter.GetBytes(rect.X), 0, 4);
                     outStream.Write(BitConverter.GetBytes(rect.Y), 0, 4);
@@ -254,16 +229,6 @@ namespace StreamLibrary.UnsafeCodecs
                     TotalDataLength += (int)length + (4 * 5);
                 }
 
-                /*if (finalUpdates.Count > 0)
-                {
-                    byte[] lele = base.jpgCompression.Compress(bmp);
-                    byte[] compressed = new SafeQuickLZ().compress(lele, 0, lele.Length, 1);
-                    bool Won = lele.Length < outStream.Length;
-                    bool CompressWon = compressed.Length < outStream.Length;
-                    Console.WriteLine(Won + ", " + CompressWon);
-                }
-                bmp.Dispose();*/
-
                 outStream.Position = oldPos;
                 outStream.Write(BitConverter.GetBytes(TotalDataLength), 0, 4);
                 Blocks.Clear();
@@ -271,8 +236,8 @@ namespace StreamLibrary.UnsafeCodecs
             }
         }
 
-       public override unsafe Bitmap DecodeData(IntPtr CodecBuffer, uint Length)
-       {
+        public override unsafe Bitmap DecodeData(IntPtr CodecBuffer, uint Length)
+        {
             if (Length < 4)
                 return decodedBitmap;
 
@@ -334,9 +299,13 @@ namespace StreamLibrary.UnsafeCodecs
                         DataSize -= UpdateLen + (4 * 5);
                     }
                 }
+
                 return decodedBitmap;
             }
-            catch { return null; }
+            catch
+            {
+                return null;
+            }
         }
     }
 }

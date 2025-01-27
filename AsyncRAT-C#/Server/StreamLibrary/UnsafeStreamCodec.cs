@@ -6,26 +6,25 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+
 namespace Server.StreamLibrary
 {
     public class UnsafeStreamCodec : IDisposable
     {
         internal Size Resolution { get; private set; }
         internal Size CheckBlock { get; private set; }
+        
         internal int ImageQuality
         {
-            get { return _imageQuality; }
+            get => _imageQuality;
             private set
             {
                 lock (_imageProcessLock)
                 {
                     _imageQuality = value;
 
-                    if (_jpgCompression != null)
-                    {
-                        _jpgCompression.Dispose();
-                    }
-
+                    // Dispose and reinitialize compression only if quality changes
+                    _jpgCompression?.Dispose();
                     _jpgCompression = new JpgCompression(_imageQuality);
                 }
             }
@@ -40,13 +39,7 @@ namespace Server.StreamLibrary
         private readonly object _imageProcessLock = new object();
         private JpgCompression _jpgCompression;
 
-        /// <summary>
-        /// Initialize a new instance of UnsafeStreamCodec class.
-        /// </summary>
-        /// <param name="imageQuality">The quality to use between 0-100.</param>
-        /// <param name="monitor">The monitor used for the images.</param>
-        /// <param name="resolution">The resolution of the monitor.</param>
-        internal UnsafeStreamCodec(int imageQuality)
+        public UnsafeStreamCodec(int imageQuality)
         {
             this.ImageQuality = imageQuality;
             this.CheckBlock = new Size(50, 1);
@@ -55,9 +48,6 @@ namespace Server.StreamLibrary
         public void Dispose()
         {
             Dispose(true);
-
-            // Tell the Garbage Collector to not waste time finalizing this object
-            // since we took care of it.
             GC.SuppressFinalize(this);
         }
 
@@ -65,253 +55,149 @@ namespace Server.StreamLibrary
         {
             if (disposing)
             {
-                if (_decodedBitmap != null)
+                _decodedBitmap?.Dispose();
+                _jpgCompression?.Dispose();
+            }
+        }
+
+        internal unsafe void CodeImage(IntPtr scan0, Rectangle scanArea, Size imageSize, PixelFormat format, Stream outStream)
+        {
+            lock (_imageProcessLock)
+            {
+                byte* pScan0 = GetScan0(scan0);
+
+                if (!outStream.CanWrite)
+                    throw new Exception("Stream must be writable.");
+
+                int stride = imageSize.Width * GetPixelSize(format);
+                int rawLength = stride * imageSize.Height;
+
+                if (_encodeBuffer == null)
                 {
-                    _decodedBitmap.Dispose();
+                    InitializeEncodeBuffer(format, imageSize, scan0, stride, rawLength, outStream);
+                    return;
                 }
 
-                if (_jpgCompression != null)
+                if (_encodedFormat != format || _encodedWidth != imageSize.Width || _encodedHeight != imageSize.Height)
+                    throw new Exception("Inconsistent image format or dimensions.");
+
+                long oldPos = outStream.Position;
+                outStream.Write(new byte[4], 0, 4); // Reserve space for total data length
+                long totalDataLength = 0;
+
+                List<Rectangle> blocks = FindChangedBlocks(scan0, scanArea, imageSize, format, stride, pScan0);
+
+                foreach (var rect in blocks)
                 {
-                    _jpgCompression.Dispose();
+                    CompressAndWriteBlock(rect, scanArea, format, stride, pScan0, outStream, ref totalDataLength);
+                }
+
+                outStream.Position = oldPos;
+                outStream.Write(BitConverter.GetBytes(totalDataLength), 0, 4); // Update total length
+            }
+        }
+
+        private static byte* GetScan0(IntPtr scan0)
+        {
+            return IntPtr.Size == 8 ? (byte*)scan0.ToInt64() : (byte*)scan0.ToInt32();
+        }
+
+        private static int GetPixelSize(PixelFormat format)
+        {
+            return format switch
+            {
+                PixelFormat.Format24bppRgb or PixelFormat.Format32bppRgb => 3,
+                PixelFormat.Format32bppArgb or PixelFormat.Format32bppPArgb => 4,
+                _ => throw new NotSupportedException($"Unsupported PixelFormat: {format}")
+            };
+        }
+
+        private void InitializeEncodeBuffer(PixelFormat format, Size imageSize, IntPtr scan0, int stride, int rawLength, Stream outStream)
+        {
+            _encodedFormat = format;
+            _encodedWidth = imageSize.Width;
+            _encodedHeight = imageSize.Height;
+            _encodeBuffer = new byte[rawLength];
+
+            fixed (byte* ptr = _encodeBuffer)
+            {
+                using (Bitmap tmpBmp = new Bitmap(imageSize.Width, imageSize.Height, stride, format, scan0))
+                {
+                    byte[] compressedData = _jpgCompression.Compress(tmpBmp);
+                    outStream.Write(BitConverter.GetBytes(compressedData.Length), 0, 4);
+                    outStream.Write(compressedData, 0, compressedData.Length);
+                    NativeMethods.memcpy(new IntPtr(ptr), scan0, (uint)rawLength);
                 }
             }
         }
 
-        internal unsafe void CodeImage(IntPtr scan0, Rectangle scanArea, Size imageSize, PixelFormat format,
-            Stream outStream)
+        private List<Rectangle> FindChangedBlocks(IntPtr scan0, Rectangle scanArea, Size imageSize, PixelFormat format, int stride, byte* pScan0)
         {
-            lock (_imageProcessLock)
+            var blocks = new List<Rectangle>();
+            var s = new Size(scanArea.Width, CheckBlock.Height);
+            var lastSize = new Size(scanArea.Width % CheckBlock.Width, scanArea.Height % CheckBlock.Height);
+
+            int lasty = scanArea.Height - lastSize.Height;
+            int lastx = scanArea.Width - lastSize.Width;
+
+            for (int y = scanArea.Y; y < scanArea.Height; y += s.Height)
             {
-                byte* pScan0;
-                if (IntPtr.Size == 8)
+                if (y == lasty)
                 {
-                    // 64 bit process
-                    pScan0 = (byte*)scan0.ToInt64();
-                }
-                else
-                {
-                    // 32 bit process
-                    pScan0 = (byte*)scan0.ToInt32();
+                    s = new Size(scanArea.Width, lastSize.Height);
                 }
 
-                if (!outStream.CanWrite)
+                var cBlock = new Rectangle(scanArea.X, y, scanArea.Width, s.Height);
+                int offset = (y * stride) + (scanArea.X * format.ToPixelSize());
+
+                if (NativeMethods.memcmp(pScan0 + offset, scan0 + offset, (uint)stride) != 0)
                 {
-                    throw new Exception("Must have access to Write in the Stream");
+                    blocks.Add(cBlock);
                 }
+            }
 
-                int stride = 0;
-                int rawLength = 0;
-                int pixelSize = 0;
+            return blocks;
+        }
 
-                switch (format)
+        private void CompressAndWriteBlock(Rectangle rect, Rectangle scanArea, PixelFormat format, int stride, byte* pScan0, Stream outStream, ref long totalDataLength)
+        {
+            using (Bitmap tmpBmp = new Bitmap(rect.Width, rect.Height, format))
+            {
+                using (BitmapData tmpData = tmpBmp.LockBits(new Rectangle(0, 0, tmpBmp.Width, tmpBmp.Height),
+                    ImageLockMode.ReadWrite, tmpBmp.PixelFormat))
                 {
-                    case PixelFormat.Format24bppRgb:
-                    case PixelFormat.Format32bppRgb:
-                        pixelSize = 3;
-                        break;
-                    case PixelFormat.Format32bppArgb:
-                    case PixelFormat.Format32bppPArgb:
-                        pixelSize = 4;
-                        break;
-                    default:
-                        throw new NotSupportedException(format.ToString());
-                }
+                    int blockStride = format.ToPixelSize() * rect.Width;
 
-                stride = imageSize.Width * pixelSize;
-                rawLength = stride * imageSize.Height;
-
-                if (_encodeBuffer == null)
-                {
-                    this._encodedFormat = format;
-                    this._encodedWidth = imageSize.Width;
-                    this._encodedHeight = imageSize.Height;
-                    this._encodeBuffer = new byte[rawLength];
-
-                    fixed (byte* ptr = _encodeBuffer)
+                    for (int j = 0; j < rect.Height; j++)
                     {
-                        byte[] temp = null;
-                        using (Bitmap tmpBmp = new Bitmap(imageSize.Width, imageSize.Height, stride, format, scan0))
-                        {
-                            temp = _jpgCompression.Compress(tmpBmp);
-                        }
-
-                        outStream.Write(BitConverter.GetBytes(temp.Length), 0, 4);
-                        outStream.Write(temp, 0, temp.Length);
-                        NativeMethods.memcpy(new IntPtr(ptr), scan0, (uint)rawLength);
-                    }
-                    return;
-                }
-
-                if (this._encodedFormat != format)
-                {
-                    throw new Exception("PixelFormat is not equal to previous Bitmap");
-                }
-                else if (this._encodedWidth != imageSize.Width || this._encodedHeight != imageSize.Height)
-                {
-                    throw new Exception("Bitmap width/height are not equal to previous bitmap");
-                }
-
-                long oldPos = outStream.Position;
-                outStream.Write(new byte[4], 0, 4);
-                long totalDataLength = 0;
-
-                List<Rectangle> blocks = new List<Rectangle>();
-
-                Size s = new Size(scanArea.Width, CheckBlock.Height);
-                Size lastSize = new Size(scanArea.Width % CheckBlock.Width, scanArea.Height % CheckBlock.Height);
-
-                int lasty = scanArea.Height - lastSize.Height;
-                int lastx = scanArea.Width - lastSize.Width;
-
-                Rectangle cBlock = new Rectangle();
-                List<Rectangle> finalUpdates = new List<Rectangle>();
-
-                s = new Size(scanArea.Width, s.Height);
-
-                fixed (byte* encBuffer = _encodeBuffer)
-                {
-                    var index = 0;
-
-                    for (int y = scanArea.Y; y != scanArea.Height; y += s.Height)
-                    {
-                        if (y == lasty)
-                        {
-                            s = new Size(scanArea.Width, lastSize.Height);
-                        }
-
-                        cBlock = new Rectangle(scanArea.X, y, scanArea.Width, s.Height);
-
-                        int offset = (y * stride) + (scanArea.X * pixelSize);
-
-                        if (NativeMethods.memcmp(encBuffer + offset, pScan0 + offset, (uint)stride) != 0)
-                        {
-                            index = blocks.Count - 1;
-
-                            if (blocks.Count != 0 && (blocks[index].Y + blocks[index].Height) == cBlock.Y)
-                            {
-                                cBlock = new Rectangle(blocks[index].X, blocks[index].Y, blocks[index].Width,
-                                    blocks[index].Height + cBlock.Height);
-                                blocks[index] = cBlock;
-                            }
-                            else
-                            {
-                                blocks.Add(cBlock);
-                            }
-                        }
+                        int blockOffset = (stride * (rect.Y + j)) + (format.ToPixelSize() * rect.X);
+                        NativeMethods.memcpy((byte*)tmpData.Scan0.ToPointer() + (j * blockStride), pScan0 + blockOffset, (uint)blockStride);
                     }
 
-                    for (int i = 0; i < blocks.Count; i++)
-                    {
-                        s = new Size(CheckBlock.Width, blocks[i].Height);
+                    outStream.Write(BitConverter.GetBytes(rect.X), 0, 4);
+                    outStream.Write(BitConverter.GetBytes(rect.Y), 0, 4);
+                    outStream.Write(BitConverter.GetBytes(rect.Width), 0, 4);
+                    outStream.Write(BitConverter.GetBytes(rect.Height), 0, 4);
+                    outStream.Write(new byte[4], 0, 4); // Reserved space for length
 
-                        for (int x = scanArea.X; x != scanArea.Width; x += s.Width)
-                        {
-                            if (x == lastx)
-                            {
-                                s = new Size(lastSize.Width, blocks[i].Height);
-                            }
+                    long lengthBefore = outStream.Position;
+                    _jpgCompression.Compress(tmpBmp, ref outStream);
+                    long blockLength = outStream.Position - lengthBefore;
 
-                            cBlock = new Rectangle(x, blocks[i].Y, s.Width, blocks[i].Height);
-                            bool foundChanges = false;
-                            uint blockStride = (uint)(pixelSize * cBlock.Width);
+                    outStream.Position -= 4;
+                    outStream.Write(BitConverter.GetBytes(blockLength), 0, 4); // Write actual block length
 
-                            for (int j = 0; j < cBlock.Height; j++)
-                            {
-                                int blockOffset = (stride * (cBlock.Y + j)) + (pixelSize * cBlock.X);
-
-                                if (NativeMethods.memcmp(encBuffer + blockOffset, pScan0 + blockOffset, blockStride) != 0)
-                                {
-                                    foundChanges = true;
-                                }
-
-                                NativeMethods.memcpy(encBuffer + blockOffset, pScan0 + blockOffset, blockStride);
-                                //copy-changes
-                            }
-
-                            if (foundChanges)
-                            {
-                                index = finalUpdates.Count - 1;
-
-                                if (finalUpdates.Count > 0 &&
-                                    (finalUpdates[index].X + finalUpdates[index].Width) == cBlock.X)
-                                {
-                                    Rectangle rect = finalUpdates[index];
-                                    int newWidth = cBlock.Width + rect.Width;
-                                    cBlock = new Rectangle(rect.X, rect.Y, newWidth, rect.Height);
-                                    finalUpdates[index] = cBlock;
-                                }
-                                else
-                                {
-                                    finalUpdates.Add(cBlock);
-                                }
-                            }
-                        }
-                    }
+                    totalDataLength += blockLength + 20; // 4 for each of X, Y, Width, Height
                 }
-
-                for (int i = 0; i < finalUpdates.Count; i++)
-                {
-                    Rectangle rect = finalUpdates[i];
-                    int blockStride = pixelSize * rect.Width;
-
-                    Bitmap tmpBmp = null;
-                    BitmapData tmpData = null;
-                    long length;
-
-                    try
-                    {
-                        tmpBmp = new Bitmap(rect.Width, rect.Height, format);
-                        tmpData = tmpBmp.LockBits(new Rectangle(0, 0, tmpBmp.Width, tmpBmp.Height),
-                            ImageLockMode.ReadWrite, tmpBmp.PixelFormat);
-
-                        for (int j = 0, offset = 0; j < rect.Height; j++)
-                        {
-                            int blockOffset = (stride * (rect.Y + j)) + (pixelSize * rect.X);
-                            NativeMethods.memcpy((byte*)tmpData.Scan0.ToPointer() + offset, pScan0 + blockOffset, (uint)blockStride);
-                            //copy-changes
-                            offset += blockStride;
-                        }
-
-                        outStream.Write(BitConverter.GetBytes(rect.X), 0, 4);
-                        outStream.Write(BitConverter.GetBytes(rect.Y), 0, 4);
-                        outStream.Write(BitConverter.GetBytes(rect.Width), 0, 4);
-                        outStream.Write(BitConverter.GetBytes(rect.Height), 0, 4);
-                        outStream.Write(new byte[4], 0, 4);
-
-                        length = outStream.Length;
-                        long old = outStream.Position;
-
-                        _jpgCompression.Compress(tmpBmp, ref outStream);
-
-                        length = outStream.Position - length;
-
-                        outStream.Position = old - 4;
-                        outStream.Write(BitConverter.GetBytes(length), 0, 4);
-                        outStream.Position += length;
-                    }
-                    finally
-                    {
-                        tmpBmp.UnlockBits(tmpData);
-                        tmpBmp.Dispose();
-                    }
-
-                    totalDataLength += length + (4 * 5);
-                }
-
-                outStream.Position = oldPos;
-                outStream.Write(BitConverter.GetBytes(totalDataLength), 0, 4);
             }
         }
 
         internal unsafe Bitmap DecodeData(IntPtr codecBuffer, uint length)
         {
             if (length < 4)
-            {
                 return _decodedBitmap;
-            }
 
-            int dataSize = *(int*)(codecBuffer);
-
+            int dataSize = *(int*)codecBuffer;
             if (_decodedBitmap == null)
             {
                 byte[] temp = new byte[dataSize];
@@ -321,14 +207,10 @@ namespace Server.StreamLibrary
                     NativeMethods.memcpy(new IntPtr(tempPtr), new IntPtr(codecBuffer.ToInt32() + 4), (uint)dataSize);
                 }
 
-                this._decodedBitmap = (Bitmap)Bitmap.FromStream(new MemoryStream(temp));
+                _decodedBitmap = (Bitmap)Bitmap.FromStream(new MemoryStream(temp));
+            }
 
-                return _decodedBitmap;
-            }
-            else
-            {
-                return _decodedBitmap;
-            }
+            return _decodedBitmap;
         }
 
         internal Bitmap DecodeData(Stream inStream)
@@ -341,36 +223,37 @@ namespace Server.StreamLibrary
             {
                 temp = new byte[dataSize];
                 inStream.Read(temp, 0, temp.Length);
-                this._decodedBitmap = (Bitmap)Bitmap.FromStream(new MemoryStream(temp));
-
-                return _decodedBitmap;
+                _decodedBitmap = (Bitmap)Bitmap.FromStream(new MemoryStream(temp));
             }
-
-            using (Graphics g = Graphics.FromImage(_decodedBitmap))
+            else
             {
-                while (dataSize > 0)
+                using (Graphics g = Graphics.FromImage(_decodedBitmap))
                 {
-                    byte[] tempData = new byte[4 * 5];
-                    inStream.Read(tempData, 0, tempData.Length);
-
-                    Rectangle rect = new Rectangle(BitConverter.ToInt32(tempData, 0), BitConverter.ToInt32(tempData, 4),
-                        BitConverter.ToInt32(tempData, 8), BitConverter.ToInt32(tempData, 12));
-                    int updateLen = BitConverter.ToInt32(tempData, 16);
-
-                    byte[] buffer = new byte[updateLen];
-                    inStream.Read(buffer, 0, buffer.Length);
-
-                    using (MemoryStream m = new MemoryStream(buffer))
+                    while (dataSize > 0)
                     {
-                        using (Bitmap tmp = (Bitmap)Image.FromStream(m))
-                        {
-                            g.DrawImage(tmp, rect.Location);
-                        }
-                    }
+                        byte[] tempData = new byte[4 * 5];
+                        inStream.Read(tempData, 0, tempData.Length);
 
-                    dataSize -= updateLen + (4 * 5);
+                        var rect = new Rectangle(BitConverter.ToInt32(tempData, 0), BitConverter.ToInt32(tempData, 4),
+                            BitConverter.ToInt32(tempData, 8), BitConverter.ToInt32(tempData, 12));
+
+                        int updateLen = BitConverter.ToInt32(tempData, 16);
+                        byte[] buffer = new byte[updateLen];
+                        inStream.Read(buffer, 0, buffer.Length);
+
+                        using (MemoryStream m = new MemoryStream(buffer))
+                        {
+                            using (Bitmap tmp = (Bitmap)Image.FromStream(m))
+                            {
+                                g.DrawImage(tmp, rect.Location);
+                            }
+                        }
+
+                        dataSize -= updateLen + (4 * 5);
+                    }
                 }
             }
+
             Resolution = _decodedBitmap.Size;
             return _decodedBitmap;
         }

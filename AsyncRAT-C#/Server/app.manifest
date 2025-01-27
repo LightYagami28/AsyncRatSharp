@@ -1,63 +1,54 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <assembly manifestVersion="1.0" xmlns="urn:schemas-microsoft-com:asm.v1">
+  <!-- Assembly Identity section -->
   <assemblyIdentity version="1.0.0.0" name="MyApplication.app"/>
+
+  <!-- Security and User Account Control (UAC) settings -->
   <trustInfo xmlns="urn:schemas-microsoft-com:asm.v2">
     <security>
       <requestedPrivileges xmlns="urn:schemas-microsoft-com:asm.v3">
-        <!-- UAC Manifest Options
-             If you want to change the Windows User Account Control level replace the 
-             requestedExecutionLevel node with one of the following.
-
-        <requestedExecutionLevel  level="asInvoker" uiAccess="false" />
-        <requestedExecutionLevel  level="requireAdministrator" uiAccess="false" />
-        <requestedExecutionLevel  level="highestAvailable" uiAccess="false" />
-
-            Specifying requestedExecutionLevel element will disable file and registry virtualization. 
-            Remove this element if your application requires this virtualization for backwards
-            compatibility.
-        -->
+        <!-- UAC Manifest Options: Define the execution level for your app -->
+        <!-- 'asInvoker' means the app will run with the same privileges as the calling process -->
         <requestedExecutionLevel level="asInvoker" uiAccess="false" />
       </requestedPrivileges>
     </security>
   </trustInfo>
 
+  <!-- Compatibility settings for various Windows versions -->
   <compatibility xmlns="urn:schemas-microsoft-com:compatibility.v1">
     <application>
-      <!-- A list of the Windows versions that this application has been tested on
-           and is designed to work with. Uncomment the appropriate elements
-           and Windows will automatically select the most compatible environment. -->
+      <!-- Supported Windows Versions -->
 
-      <!-- Windows Vista -->
-      <!--<supportedOS Id="{e2011457-1546-43c5-a5fe-008deee3d3f0}" />-->
+      <!-- Support for Windows Vista -->
+      <supportedOS Id="{e2011457-1546-43c5-a5fe-008deee3d3f0}" /> <!-- Windows Vista -->
 
-      <!-- Windows 7 -->
-      <!--<supportedOS Id="{35138b9a-5d96-4fbd-8e2d-a2440225f93a}" />-->
+      <!-- Support for Windows 7 -->
+      <supportedOS Id="{35138b9a-5d96-4fbd-8e2d-a2440225f93a}" /> <!-- Windows 7 -->
 
-      <!-- Windows 8 -->
-      <!--<supportedOS Id="{4a2f28e3-53b9-4441-ba9c-d69d4a4a6e38}" />-->
+      <!-- Support for Windows 8 -->
+      <supportedOS Id="{4a2f28e3-53b9-4441-ba9c-d69d4a4a6e38}" /> <!-- Windows 8 -->
 
-      <!-- Windows 8.1 -->
-      <!--<supportedOS Id="{1f676c76-80e1-4239-95bb-83d0f6d0da78}" />-->
+      <!-- Support for Windows 8.1 -->
+      <supportedOS Id="{1f676c76-80e1-4239-95bb-83d0f6d0da78}" /> <!-- Windows 8.1 -->
 
-      <!-- Windows 10 -->
-      <!--<supportedOS Id="{8e0f7a12-bfb3-4fe8-b9a5-48fd50a15a9a}" />-->
+      <!-- Support for Windows 10 -->
+      <supportedOS Id="{8e0f7a12-bfb3-4fe8-b9a5-48fd50a15a9a}" /> <!-- Windows 10 -->
 
+      <!-- Support for Windows 11 -->
+      <supportedOS Id="{a9c07c5a-201f-4ff1-9877-10ab31f0b130}" /> <!-- Windows 11 -->
     </application>
   </compatibility>
 
-  <!-- Indicates that the application is DPI-aware and will not be automatically scaled by Windows at higher
-       DPIs. Windows Presentation Foundation (WPF) applications are automatically DPI-aware and do not need 
-       to opt in. Windows Forms applications targeting .NET Framework 4.6 that opt into this setting, should 
-       also set the 'EnableWindowsFormsHighDpiAutoResizing' setting to 'true' in their app.config. -->
-  
+  <!-- Application settings for DPI Awareness -->
   <application xmlns="urn:schemas-microsoft-com:asm.v3">
     <windowsSettings>
+      <!-- Define that the application is DPI-aware to prevent automatic scaling on high DPI displays -->
       <dpiAware xmlns="http://schemas.microsoft.com/SMI/2005/WindowsSettings">true</dpiAware>
     </windowsSettings>
   </application>
-  
 
-  <!-- Enable themes for Windows common controls and dialogs (Windows XP and later) -->
+  <!-- Optional: Enable themes for Windows common controls (required for Windows XP and later) -->
+  <!-- Uncomment to include the dependency on common Windows controls -->
   <!--
   <dependency>
     <dependentAssembly>
@@ -72,5 +63,4 @@
     </dependentAssembly>
   </dependency>
   -->
-
 </assembly>

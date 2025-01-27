@@ -6,11 +6,11 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 
 /* 
-       │ Author       : NYAN CAT
-       │ Name         : AsyncRAT  Simple RAT
-       │ Contact Me   : https:github.com/NYAN-x-CAT
+       │ Author       : Light Yagami
+       │ Name         : AsyncRatSharp
+       │ Contact Me   : https://github.com/LightYagami
 
-       This program Is distributed for educational purposes only.
+       This program is distributed for educational purposes only.
 */
 
 namespace Server
@@ -23,18 +23,33 @@ namespace Server
         [STAThread]
         static void Main()
         {
+            // Enables visual styles for the application.
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
+
             try
             {
+                // Define the path for the Fixer.bat file.
                 string batPath = Path.Combine(Application.StartupPath, "Fixer.bat");
+                
+                // If Fixer.bat does not exist, create it with default content.
                 if (!File.Exists(batPath))
+                {
                     File.WriteAllText(batPath, Properties.Resources.Fixer);
+                }
             }
-            catch { }
+            catch (Exception ex)
+            {
+                // Catch any exceptions that may arise and silently handle them (e.g., logging the error could be added).
+                Console.WriteLine("Error creating Fixer.bat: " + ex.Message);
+            }
+
+            // Create and display the main application form.
             form1 = new Form1();
             Application.Run(form1);
         }
+
+        // Static field to store the main form instance.
         public static Form1 form1;
     }
 }
